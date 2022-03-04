@@ -45,7 +45,9 @@ from deepracer_interfaces_pkg.msg import (DetectionDeltaMsg,
                                           ServoCtrlMsg)
 from deepracer_interfaces_pkg.srv import SetMaxSpeedSrv
 from ftl_navigation_pkg import (constants_ftl,
-                                utils, bmi160, deepracer_MPC)
+                                utils
+                                #,bmi160, deepracer_MPC
+                                )
 import numpy as np
 
 
@@ -98,10 +100,12 @@ class FTLNavigationNode(Node):
 
         #-------------------------BEGIN ADDED CODE-------------------------
         # Create MPC controller and necessary variables
+        '''
         self.MPC = deepracer_MPC.MPC()
         self.prev_ego_speed = 0
         self.start_time = time.time()
         self.prev_torque = 0
+        '''
         #-------------------------END ADDED CODE-------------------------
 
 
@@ -157,6 +161,7 @@ class FTLNavigationNode(Node):
         self.delta_buffer.put(detection_delta)
 
     #-------------------------BEGIN ADDED CODE-------------------------
+    '''
     def get_imu_data(self): 
         accel_data = []
         gyro_data = []
@@ -220,6 +225,7 @@ class FTLNavigationNode(Node):
         throttle = self.get_rescaled_manual_speed(throttle , self.max_speed_pct)
 
         return throttle, car_dist
+    '''
     #-------------------------END ADDED CODE-------------------------
 
     def plan_action(self, delta):
@@ -355,7 +361,7 @@ class FTLNavigationNode(Node):
                  detection delta in x and y axes respectively passed as a list.
         """
         #-------------------------BEGIN ADDED CODE-------------------------
-        sim_car_dist = 1 # for sim MPC
+        #sim_car_dist = 1 # for sim MPC
         #-------------------------END ADDED CODE-------------------------
         try:
             while not self.stop_thread:
@@ -367,7 +373,7 @@ class FTLNavigationNode(Node):
 
                 #-------------------------BEGIN ADDED CODE-------------------------
                 # Use sim MPC to calculate throttle
-                msg.throttle, sim_car_dist = self.get_sim_MPC_action(sim_car_dist)
+                #msg.throttle, sim_car_dist = self.get_sim_MPC_action(sim_car_dist)
                 #-------------------------END ADDED CODE-------------------------
 
                 # Publish msg based on action planned and mapped from a new object detection.
@@ -387,7 +393,7 @@ class FTLNavigationNode(Node):
 
                     #-------------------------BEGIN ADDED CODE-------------------------
                     # Use sim MPC to calculate throttle
-                    msg.throttle, sim_car_dist = self.get_sim_MPC_action(sim_car_dist)
+                    #msg.throttle, sim_car_dist = self.get_sim_MPC_action(sim_car_dist)
                     #-------------------------END ADDED CODE-------------------------
 
                     # Publish blind action
