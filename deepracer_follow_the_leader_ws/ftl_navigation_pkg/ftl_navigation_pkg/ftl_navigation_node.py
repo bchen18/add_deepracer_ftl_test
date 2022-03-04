@@ -44,7 +44,7 @@ from rclpy.qos import (QoSProfile,
 from deepracer_interfaces_pkg.msg import (DetectionDeltaMsg,
                                           ServoCtrlMsg)
 from deepracer_interfaces_pkg.srv import SetMaxSpeedSrv
-from ftl_navigation_pkg import (constants_ftl,
+from ftl_navigation_pkg import (constants,
                                 utils,
                                 bmi160, deepracer_MPC
                                 )
