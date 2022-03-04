@@ -166,62 +166,62 @@ class FTLNavigationNode(Node):
         accel_data,gyro_data = imu_dev.show_accel_gyro()
         return accel_data,gyro_data
 
-    # def normalize_neg_1_to_1(self,x, x_min, x_max):
-    #     return 2*((x - x_min)/(x_max - x_min)) - 1
+    def normalize_neg_1_to_1(self,x, x_min, x_max):
+        return 2*((x - x_min)/(x_max - x_min)) - 1
 
-    # # Simulate "phantom" front vehicle braking for a demo. 
-    # # Need car_dist as a parameter since it changes each time
-    # def get_sim_MPC_action(self, car_dist):
-    #     # if first step of sim, set initial values 
-    #     if self.prev_ego_speed == [0, 0, 0]:
-    #         self.MPC.v_f = 1 # starting speed of "phamtom" front car in m/s
+    # Simulate "phantom" front vehicle braking for a demo. 
+    # Need car_dist as a parameter since it changes each time
+    def get_sim_MPC_action(self, car_dist):
+        # if first step of sim, set initial values 
+        if self.prev_ego_speed == [0, 0, 0]:
+            self.MPC.v_f = 1 # starting speed of "phamtom" front car in m/s
 
-    #     # get current ego vehicle speed
-    #     accel_data,gyro_data = self.get_imu_data()
+        # get current ego vehicle speed
+        accel_data,gyro_data = self.get_imu_data()
 
-    #     self.get_logger().info(f"Accelerometer data:{accel_data} gyro data: {gyro_data}")
-    #     ego_speed = self.prev_ego_speed + accel_data[0]*0.1
-    #     self.prev_ego_speed = ego_speed
+        self.get_logger().info(f"Accelerometer data:{accel_data} gyro data: {gyro_data}")
+        ego_speed = self.prev_ego_speed + accel_data[0]*0.1
+        self.prev_ego_speed = ego_speed
 
-    #     # construct state vector
-    #     x_t = np.array([[car_dist],
-    #                     [ego_speed]])
+        # construct state vector
+        x_t = np.array([[car_dist],
+                        [ego_speed]])
 
-    #     self.get_logger().info(f"Before MPC step:{ego_speed}")
+        self.get_logger().info(f"Before MPC step:{ego_speed}")
         
-    #     # Step MPC with current state
-    #     [feas, x_opt, u_opt, J_opt] = self.MPC.MPC_step(x_t)
-    #     if feas != "infeasible":
-    #         # if MPC finds a solution, use its torque output
-    #         torque = u_opt.value[0][0]
-    #     else:
-    #         # if MPC can't find solution, use reduced previous torque 
-    #         torque = self.prev_torque*0.9
-    #     self.prev_torque = torque
-    #     self.get_logger().info(f"After MPC step:{ego_speed}")
+        # Step MPC with current states
+        [feas, x_opt, u_opt, J_opt] = self.MPC.MPC_step(x_t)
+        if feas != "infeasible":
+            # if MPC finds a solution, use its torque output
+            torque = u_opt.value[0][0]
+        else:
+            # if MPC can't find solution, use reduced previous torque 
+            torque = self.prev_torque*0.9
+        self.prev_torque = torque
+        self.get_logger().info(f"After MPC step:{ego_speed}")
 
-    #     # calculate new distance between cars and slow down "phantom" front car
-    #     car_dist += (self.MPC.v_f - ego_speed)*0.1
-    #     time_elapsed = time.time() - self.start_time
-    #     if time_elapsed > 20: # after 2 seconds, simulate slowing down "phantom" front car
-    #         self.MPC.v_f = max(0, 1 - 0.1*(time_elapsed - 20)) # slow down by 0.1 m/s each second, clipped at 0 m/s
+        # calculate new distance between cars and slow down "phantom" front car
+        car_dist += (self.MPC.v_f - ego_speed)*0.1
+        time_elapsed = time.time() - self.start_time
+        if time_elapsed > 20: # after 2 seconds, simulate slowing down "phantom" front car
+            self.MPC.v_f = max(0, 1 - 0.1*(time_elapsed - 20)) # slow down by 0.1 m/s each second, clipped at 0 m/s
 
-    #     # Convert MPC's output torque to throttle and update msg
-    #     ########################
-    #     #B: 0.00002*(x**2) + 0.0083*x + 11.461 RPM to PWM
-    #     #A: y = -13.333x + 20000 RPM to Torque 
-    #     #1. Calculate RPM from Torque from A
-    #     #2. Calcualte PWM from RPM using B 
-    #     #3. Use PWM as an input to servo node 
-    #     #########################
-    #     #rpm = (torque - 20000)/(-13.3333)
-    #     #throttle = 0.00002*(rpm**2) + 0.0083*(rpm) + 11.461
+        # Convert MPC's output torque to throttle and update msg
+        ########################
+        #B: 0.00002*(x**2) + 0.0083*x + 11.461 RPM to PWM
+        #A: y = -13.333x + 20000 RPM to Torque 
+        #1. Calculate RPM from Torque from A
+        #2. Calcualte PWM from RPM using B 
+        #3. Use PWM as an input to servo node 
+        #########################
+        #rpm = (torque - 20000)/(-13.3333)
+        #throttle = 0.00002*(rpm**2) + 0.0083*(rpm) + 11.461
 
-    #     # Normalize torque betwen -1 and 1 to pass into get_rescaled_manual_speed
-    #     throttle = self.normalize_neg_1_to_1(torque, self.MPC.torque_low, self.MPC.torque_high)
-    #     throttle = self.get_rescaled_manual_speed(throttle , self.max_speed_pct)
+        # Normalize torque betwen -1 and 1 to pass into get_rescaled_manual_speed
+        throttle = self.normalize_neg_1_to_1(torque, self.MPC.torque_low, self.MPC.torque_high)
+        throttle = self.get_rescaled_manual_speed(throttle , self.max_speed_pct)
 
-    #     return throttle, car_dist
+        return throttle, car_dist
     #-------------------------END ADDED CODE-------------------------
 
     def plan_action(self, delta):
@@ -369,8 +369,7 @@ class FTLNavigationNode(Node):
 
                 #-------------------------BEGIN ADDED CODE-------------------------
                 # Use sim MPC to calculate throttle
-                accel_data,gyro_data = self.get_imu_data()
-                #msg.throttle, sim_car_dist = self.get_sim_MPC_action(sim_car_dist)
+                msg.throttle, sim_car_dist = self.get_sim_MPC_action(sim_car_dist)
                 #-------------------------END ADDED CODE-------------------------
 
                 # Publish msg based on action planned and mapped from a new object detection.
@@ -390,7 +389,7 @@ class FTLNavigationNode(Node):
 
                     #-------------------------BEGIN ADDED CODE-------------------------
                     # Use sim MPC to calculate throttle
-                    #msg.throttle, sim_car_dist = self.get_sim_MPC_action(sim_car_dist)
+                    msg.throttle, sim_car_dist = self.get_sim_MPC_action(sim_car_dist)
                     #-------------------------END ADDED CODE-------------------------
 
                     # Publish blind action
