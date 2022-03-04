@@ -45,8 +45,8 @@ from deepracer_interfaces_pkg.msg import (DetectionDeltaMsg,
                                           ServoCtrlMsg)
 from deepracer_interfaces_pkg.srv import SetMaxSpeedSrv
 from ftl_navigation_pkg import (constants_ftl,
-                                utils
-                                #,bmi160, deepracer_MPC
+                                utils,
+                                bmi160, deepracer_MPC
                                 )
 import numpy as np
 
@@ -100,10 +100,10 @@ class FTLNavigationNode(Node):
 
         #-------------------------BEGIN ADDED CODE-------------------------
         # Create MPC controller and necessary variables
-        # self.MPC = deepracer_MPC.MPC()
-        # self.prev_ego_speed = 0
-        # self.start_time = time.time()
-        # self.prev_torque = 0
+        self.MPC = deepracer_MPC.MPC()
+        self.prev_ego_speed = 0
+        self.start_time = time.time()
+        self.prev_torque = 0
         #-------------------------END ADDED CODE-------------------------
 
 
@@ -159,12 +159,12 @@ class FTLNavigationNode(Node):
         self.delta_buffer.put(detection_delta)
 
     #-------------------------BEGIN ADDED CODE-------------------------
-    # def get_imu_data(self): 
-    #     accel_data = []
-    #     gyro_data = []
-    #     imu_dev = bmi160.accel_gyro_dev()
-    #     accel_data,gyro_data = imu_dev.show_accel_gyro()
-    #     return accel_data,gyro_data
+    def get_imu_data(self): 
+        accel_data = []
+        gyro_data = []
+        imu_dev = bmi160.accel_gyro_dev()
+        accel_data,gyro_data = imu_dev.show_accel_gyro()
+        return accel_data,gyro_data
 
     # def normalize_neg_1_to_1(self,x, x_min, x_max):
     #     return 2*((x - x_min)/(x_max - x_min)) - 1
@@ -357,7 +357,7 @@ class FTLNavigationNode(Node):
                  detection delta in x and y axes respectively passed as a list.
         """
         #-------------------------BEGIN ADDED CODE-------------------------
-        #sim_car_dist = 1 # for sim MPC
+        sim_car_dist = 1 # for sim MPC
         #-------------------------END ADDED CODE-------------------------
         try:
             while not self.stop_thread:
@@ -369,6 +369,7 @@ class FTLNavigationNode(Node):
 
                 #-------------------------BEGIN ADDED CODE-------------------------
                 # Use sim MPC to calculate throttle
+                accel_data,gyro_data = self.get_imu_data()
                 #msg.throttle, sim_car_dist = self.get_sim_MPC_action(sim_car_dist)
                 #-------------------------END ADDED CODE-------------------------
 
