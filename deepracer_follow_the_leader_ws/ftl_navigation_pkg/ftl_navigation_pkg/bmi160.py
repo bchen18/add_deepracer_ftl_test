@@ -3,7 +3,7 @@ import sys, getopt
 from time import sleep
 import os
 
-bus=SMBus(2)
+bus = SMBus(0)
 
 BMI160_DEVICE_ADDRESS = 0x68
 
@@ -83,9 +83,18 @@ z_accelOffset = 0
 class accel_gyro_dev(): 
 
   def chip_init(self):
+    busid = 0
+    global bus
+    while (busid < 10): 
+      try:
+        bus = SMBus(busid)
+        chipid = bus.read_byte_data(BMI160_DEVICE_ADDRESS, BMI160_REGA_USR_CHIP_ID)
+        break
+      except Exception as e: 
+        busid += 1
+      #chipid = bus.read_byte_data(BMI160_DEVICE_ADDRESS, BMI160_REGA_USR_CHIP_ID)
 
-    chipid = bus.read_byte_data(BMI160_DEVICE_ADDRESS, BMI160_REGA_USR_CHIP_ID)
-
+    print("FOUND BUSID: %s"%busid)
     print("---------")
     if chipid == 0xD1 :
       print("chip id is 0x%X, BMI160" % chipid)
@@ -397,7 +406,9 @@ class accel_gyro_dev():
     """
 
 if __name__ == '__main__':
+  
   instance = accel_gyro_dev()
+  instance.chip_init()
   instance.show_accel_gyro()
   sys.exit()
 
