@@ -167,6 +167,15 @@ class FTLNavigationNode(Node):
     def normalize_neg_1_to_1(self,x, x_min, x_max):
         return 2*((x - x_min)/(x_max - x_min)) - 1
 
+    # Estimates the distance to the front car
+    # Use of simple optic geometry
+    def get_front_distance(self, delta):
+        delta_x, delta_y = delta[0], delta[1]
+        tilt = 20 *np.pi/180 # evaluation of camera tilt, need to do proper measurement
+        f = 0.045333 # lens focal [meters]
+        car_height = 0.135 # measurement in meters
+        return np.cos(tilt)*f*(delta_x/car_height)/(delta_x/car_height-1)
+
     # Simulate "phantom" front vehicle braking for a demo. 
     # Need car_dist as a parameter since it changes each time
     def get_sim_MPC_action(self, car_dist):
@@ -366,6 +375,10 @@ class FTLNavigationNode(Node):
                                                                  self.max_speed_pct)
 
                 #-------------------------BEGIN ADDED CODE-------------------------
+                # Test front_distance function
+                front_dist = get_front_distance(detection_delta.delta)
+                self.get_logger().info(f"Front Distance to Front Vehicle:{front_dist}")
+
                 # Use sim MPC to calculate throttle
                 msg.throttle, sim_car_dist = self.get_sim_MPC_action(sim_car_dist)
                 #-------------------------END ADDED CODE-------------------------
