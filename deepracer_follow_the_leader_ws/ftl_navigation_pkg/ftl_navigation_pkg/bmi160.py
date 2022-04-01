@@ -3,7 +3,7 @@ import sys, getopt
 from time import sleep
 import os
 
-bus = SMBus(0)
+bus = SMBus(1)
 
 BMI160_DEVICE_ADDRESS = 0x68
 
@@ -110,7 +110,7 @@ class accel_gyro_dev():
     bus.write_byte_data(BMI160_DEVICE_ADDRESS, BMI160_REGA_USR_GYR_RANGE_ADDR, 0x0)
 
     #command register
-    bus.write_byte_data(BMI160_DEVICE_ADDRESS, BMI160_REGA_CMD_CMD_ADDR, CMD_SOFT_RESET_REG)
+    #bus.write_byte_data(BMI160_DEVICE_ADDRESS, BMI160_REGA_CMD_CMD_ADDR, CMD_SOFT_RESET_REG)
 
 
   def reg_read_bits(self,reg, pos, len):
@@ -408,6 +408,6 @@ class accel_gyro_dev():
 if __name__ == '__main__':
 
   instance = accel_gyro_dev()
-  instance.chip_init()
+  #instance.chip_init()
   instance.show_accel_gyro()
   sys.exit()
