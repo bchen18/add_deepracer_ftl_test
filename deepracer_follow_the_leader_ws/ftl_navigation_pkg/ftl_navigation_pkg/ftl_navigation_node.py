@@ -45,9 +45,10 @@ from deepracer_interfaces_pkg.msg import (DetectionDeltaMsg,
                                           ServoCtrlMsg)
 from deepracer_interfaces_pkg.srv import SetMaxSpeedSrv
 from ftl_navigation_pkg import (constants,
-                                utils,
-                                bmi160, deepracer_MPC
-                                )
+                                utils, 
+                                bmi160, 
+                                deepracer_MPC)
+
 import numpy as np
 
 
@@ -104,6 +105,8 @@ class FTLNavigationNode(Node):
         self.prev_ego_speed = 0
         self.start_time = time.time()
         self.prev_torque = 0
+        self.f = 0.136768 #found a reference on learnopencv
+        self.lamb = 8.387e-7
         #-------------------------END ADDED CODE-------------------------
 
 
@@ -168,6 +171,29 @@ class FTLNavigationNode(Node):
 
     def normalize_neg_1_to_1(self,x, x_min, x_max):
         return 2*((x - x_min)/(x_max - x_min)) - 1
+
+    # Estimates the distance to the front car
+    # Use of simple optic geometry
+    def get_front_distance(self, delta):
+        delta_x, delta_y, _, _ = delta[0], delta[1]
+        tilt = 20 *np.pi/180 # evaluation of camera tilt, need to do proper measurement
+        f = 0.045333 # lens focal [meters]
+        car_height = 0.135 # measurement in meters
+        return np.cos(tilt)*f*(delta_x/car_height)/(delta_x/car_height-1)
+
+    # Estimates the distance to the front car
+    # Uses camera matrix
+    def get_front_distance_camera_matrix(self, delta):
+        _, _, bb_center_x, bb_center_y, target_x, target_y = delta[0], delta[1], delta[2], delta[3], delta[4], delta[5]
+        Pi = np.array([[self.f,0,target_x,0],
+                      [0,self.f,target_y,0],
+                      [0,0,1,0]])
+        relative_pos_vector  = np.linalg.pinv(Pi)@(np.array([[bb_center_x, bb_center_y,1]]).T)-np.array([[6.79995,4.5333,1.0,0.0]]).T
+        distance = 0
+        self.get_logger().info(f"Pseudo-inverse of C_cam: {relative_pos_vector}")
+        for i in range(3):
+            distance += relative_pos_vector[i]**2
+        return self.lamb*distance
 
     # Simulate "phantom" front vehicle braking for a demo. 
     # Need car_dist as a parameter since it changes each time
@@ -371,6 +397,10 @@ class FTLNavigationNode(Node):
                                                                  self.max_speed_pct)
 
                 #-------------------------BEGIN ADDED CODE-------------------------
+                # Test front_distance function
+                front_dist = self.get_front_distance_camera_matrix(detection_delta.delta)
+                self.get_logger().info(f"Front Distance to Front Vehicle:{front_dist}")
+
                 # Use sim MPC to calculate throttle
                 msg.throttle, sim_car_dist = self.get_sim_MPC_action(sim_car_dist)
                 #-------------------------END ADDED CODE-------------------------

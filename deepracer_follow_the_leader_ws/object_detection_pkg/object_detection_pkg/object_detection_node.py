@@ -224,7 +224,7 @@ class ObjectDetectionNode(Node):
         delta_x = (bb_center_x - target_x) / self.w
         delta_y = (bb_center_y - target_y) / self.h
         delta = DetectionDeltaMsg()
-        delta.delta = [delta_x, delta_y]
+        delta.delta = [delta_x, delta_y,bb_center_x,bb_center_y, target_x, target_y]
         self.get_logger().debug(f"Delta from target position: {delta_x} {delta_y}")
         return delta
 
