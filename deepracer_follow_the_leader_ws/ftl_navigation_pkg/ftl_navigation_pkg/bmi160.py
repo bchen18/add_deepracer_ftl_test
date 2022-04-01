@@ -1,14 +1,14 @@
 from smbus2 import SMBus
-import sys, getopt 
+import sys, getopt
 from time import sleep
 import os
 
-bus=SMBus(2)
+bus = SMBus(0)
 
 BMI160_DEVICE_ADDRESS = 0x68
 
 BMI160_REGA_USR_CHIP_ID      = 0x00
-BMI160_REGA_USR_ACC_CONF_ADDR     = 0x40 
+BMI160_REGA_USR_ACC_CONF_ADDR     = 0x40
 BMI160_REGA_USR_ACC_RANGE_ADDR    = 0x41
 BMI160_REGA_USR_GYR_CONF_ADDR     = 0x42
 BMI160_REGA_USR_GYR_RANGE_ADDR    = 0x43
@@ -26,16 +26,16 @@ CMD_PMU_GYRO_SUSPEND    = 0x14
 CMD_PMU_GYRO_NORMAL     = 0x15
 CMD_PMU_GYRO_FASTSTART  = 0x17
 
-BMI160_USER_DATA_14_ADDR = 0X12 # accel x 
-BMI160_USER_DATA_15_ADDR = 0X13 # accel x 
-BMI160_USER_DATA_16_ADDR = 0X14 # accel y 
-BMI160_USER_DATA_17_ADDR = 0X15 # accel y 
-BMI160_USER_DATA_18_ADDR = 0X16 # accel z 
-BMI160_USER_DATA_19_ADDR = 0X17 # accel z 
+BMI160_USER_DATA_14_ADDR = 0X12 # accel x
+BMI160_USER_DATA_15_ADDR = 0X13 # accel x
+BMI160_USER_DATA_16_ADDR = 0X14 # accel y
+BMI160_USER_DATA_17_ADDR = 0X15 # accel y
+BMI160_USER_DATA_18_ADDR = 0X16 # accel z
+BMI160_USER_DATA_19_ADDR = 0X17 # accel z
 
-BMI160_USER_DATA_8_ADDR  = 0X0C # gyro x 
-BMI160_USER_DATA_9_ADDR  = 0X0D # gyro x 
-BMI160_USER_DATA_10_ADDR = 0X0E # gyro y 
+BMI160_USER_DATA_8_ADDR  = 0X0C # gyro x
+BMI160_USER_DATA_9_ADDR  = 0X0D # gyro x
+BMI160_USER_DATA_10_ADDR = 0X0E # gyro y
 BMI160_USER_DATA_11_ADDR = 0X0F # gyro y
 BMI160_USER_DATA_12_ADDR = 0X10 # gyro z
 BMI160_USER_DATA_13_ADDR = 0X11 # gyro z
@@ -80,12 +80,21 @@ x_accelOffset = 0
 y_accelOffset = 0
 z_accelOffset = 0
 
-class accel_gyro_dev(): 
+class accel_gyro_dev():
 
   def chip_init(self):
+    busid = 0
+    global bus
+    while (busid < 10):
+      try:
+        bus = SMBus(busid)
+        chipid = bus.read_byte_data(BMI160_DEVICE_ADDRESS, BMI160_REGA_USR_CHIP_ID)
+        break
+      except Exception as e:
+        busid += 1
+      #chipid = bus.read_byte_data(BMI160_DEVICE_ADDRESS, BMI160_REGA_USR_CHIP_ID)
 
-    chipid = bus.read_byte_data(BMI160_DEVICE_ADDRESS, BMI160_REGA_USR_CHIP_ID)
-
+    print("FOUND BUSID: %s"%busid)
     print("---------")
     if chipid == 0xD1 :
       print("chip id is 0x%X, BMI160" % chipid)
@@ -129,11 +138,11 @@ class accel_gyro_dev():
 
   def read_accel(self):
     acc_value = [ 0, 0, 0, 0, 0, 0]
-    
+
     global acc_x
     global acc_y
     global acc_z
-    
+
     global acc_x_raw
     global acc_y_raw
     global acc_z_raw
@@ -144,20 +153,20 @@ class accel_gyro_dev():
 
     #read acc xyz
     acc_value = bus.read_i2c_block_data(BMI160_DEVICE_ADDRESS, BMI160_USER_DATA_14_ADDR, 6)
-        
+
     acc_x_raw =  (acc_value[1] << 8) | acc_value[0]
     acc_y_raw =  (acc_value[3] << 8) | acc_value[2]
     acc_z_raw =  (acc_value[5] << 8) | acc_value[4]
 
     if(acc_x_raw > 0x7fff) :
-      acc_x_raw = -(0xffff - acc_x_raw + 1) 
+      acc_x_raw = -(0xffff - acc_x_raw + 1)
 
     if(acc_y_raw > 0x7fff) :
-      acc_y_raw = -(0xffff - acc_y_raw + 1) 
+      acc_y_raw = -(0xffff - acc_y_raw + 1)
 
     if(acc_z_raw > 0x7fff) :
-      acc_z_raw = -(0xffff - acc_z_raw + 1) 
-              
+      acc_z_raw = -(0xffff - acc_z_raw + 1)
+
     acc_x = (acc_x_raw * 9.8) / (0x8000 / 2)
     acc_y = (acc_y_raw * 9.8) / (0x8000 / 2)
     acc_z = (acc_z_raw * 9.8) / (0x8000 / 2)
@@ -188,15 +197,15 @@ class accel_gyro_dev():
     gyro_x_raw =  (gyro_value[1] << 8) | gyro_value[0]
     gyro_y_raw =  (gyro_value[3] << 8) | gyro_value[2]
     gyro_z_raw =  (gyro_value[5] << 8) | gyro_value[4]
-        
+
     if(gyro_x_raw > 0x7fff) :
-      gyro_x_raw = -(0xffff - gyro_x_raw + 1) 
+      gyro_x_raw = -(0xffff - gyro_x_raw + 1)
 
     if(gyro_y_raw > 0x7fff) :
-      gyro_y_raw = -(0xffff - gyro_y_raw + 1) 
+      gyro_y_raw = -(0xffff - gyro_y_raw + 1)
 
     if(gyro_z_raw > 0x7fff) :
-      gyro_z_raw = -(0xffff - gyro_z_raw + 1) 
+      gyro_z_raw = -(0xffff - gyro_z_raw + 1)
 
     gyro_x = (gyro_x_raw * 2000) / 0x8000
     gyro_y = (gyro_y_raw * 2000) / 0x8000
@@ -221,8 +230,8 @@ class accel_gyro_dev():
     elif (target == 0):
       foc_conf = (0x3 << BMI160_FOC_ACC_X_BIT);
     else:
-      return;  #Invalid target value 
-    
+      return;  #Invalid target value
+
     bus.write_byte_data(BMI160_DEVICE_ADDRESS, BMI160_RA_FOC_CONF, foc_conf)
     bus.write_byte_data(BMI160_DEVICE_ADDRESS, BMI160_REGA_CMD_CMD_ADDR, BMI160_CMD_START_FOC)
 
@@ -240,8 +249,8 @@ class accel_gyro_dev():
     elif (target == 0):
       foc_conf = (0x3 << BMI160_FOC_ACC_Y_BIT);
     else:
-      return;  #Invalid target value 
-    
+      return;  #Invalid target value
+
     bus.write_byte_data(BMI160_DEVICE_ADDRESS, BMI160_RA_FOC_CONF, foc_conf)
     bus.write_byte_data(BMI160_DEVICE_ADDRESS, BMI160_REGA_CMD_CMD_ADDR, BMI160_CMD_START_FOC)
 
@@ -259,8 +268,8 @@ class accel_gyro_dev():
     elif (target == 0):
       foc_conf = (0x3 << BMI160_FOC_ACC_Z_BIT);
     else:
-      return;  #Invalid target value 
-    
+      return;  #Invalid target value
+
     bus.write_byte_data(BMI160_DEVICE_ADDRESS, BMI160_RA_FOC_CONF, foc_conf)
     bus.write_byte_data(BMI160_DEVICE_ADDRESS, BMI160_REGA_CMD_CMD_ADDR, BMI160_CMD_START_FOC)
 
@@ -295,8 +304,8 @@ class accel_gyro_dev():
   def autoCalibrateGyroOffset(self):
     foc_conf = (1 << BMI160_FOC_GYR_EN);
     bus.write_byte_data(BMI160_DEVICE_ADDRESS, BMI160_RA_FOC_CONF, foc_conf)
-    bus.write_byte_data(BMI160_DEVICE_ADDRESS, BMI160_REGA_CMD_CMD_ADDR, BMI160_CMD_START_FOC) 
-    
+    bus.write_byte_data(BMI160_DEVICE_ADDRESS, BMI160_REGA_CMD_CMD_ADDR, BMI160_CMD_START_FOC)
+
     while True:
       ra_status = bus.read_byte_data(BMI160_DEVICE_ADDRESS, BMI160_RA_STATUS)
       if((ra_status & 0x8) != 0):
@@ -308,7 +317,7 @@ class accel_gyro_dev():
       return (value & (sign_bit - 1)) - (value & sign_bit)
 
   def getGyroOffset(self):
-    x_offset = bus.read_byte_data(BMI160_DEVICE_ADDRESS, BMI160_RA_OFFSET_3) 
+    x_offset = bus.read_byte_data(BMI160_DEVICE_ADDRESS, BMI160_RA_OFFSET_3)
     x_offset |=  (self.reg_read_bits(BMI160_RA_OFFSET_6, 0, 2)) << 8  #Get OFFSET_6 bit 0 bit 1 for off_gry_x<9:8>
     x_gyroOffset = self.sign_extend(x_offset, 10)
 
@@ -333,23 +342,23 @@ class accel_gyro_dev():
     self.reg_write_bits(BMI160_RA_OFFSET_6, enabled, BMI160_GYR_OFFSET_EN, 1)
     return;
 
-  def calibration_process(self): 
+  def calibration_process(self):
     self.enable_accel()
     self.enable_gyro()
 
-    
+
     print("Starting Acceleration calibration and enabling offset compensation...")
     self.autoCalibrateXAccelOffset(0)
     self.autoCalibrateYAccelOffset(0)
     self.autoCalibrateZAccelOffset(1)
     self.getAccelOffset()
     print("Done")
-    
+
     print("Starting Gyroscope calibration and enabling offset compensation...")
     self.autoCalibrateGyroOffset()
     self.getGyroOffset()
     print("Done")
-    
+
     self.setGyroOffsetEnabled(1)
     self.setAccelOffsetEnabled(1)
 
@@ -369,8 +378,8 @@ class accel_gyro_dev():
     """""
     try:
       while True:
-      
-        
+
+
         print "==============================================================="
         print "gyro x_raw = %d, y_raw = %d z_raw = %d" % (gyro_x_raw, gyro_y_raw, gyro_z_raw)
         print "gyro x = %d, y = %d z = %d" % (gyro_x, gyro_y, gyro_z)
@@ -378,7 +387,7 @@ class accel_gyro_dev():
         print "accel x_raw = %d, y_raw = %d z_raw = %d" % (acc_x_raw, acc_y_raw, acc_z_raw)
         print "accel x = %d, y = %d z = %d" % (acc_x, acc_y, acc_z)
         print "==============================================================="
-        
+
         self.read_gyro()
         self.read_accel()
         print("Apply Platform Matrix")
@@ -397,10 +406,8 @@ class accel_gyro_dev():
     """
 
 if __name__ == '__main__':
+
   instance = accel_gyro_dev()
+  instance.chip_init()
   instance.show_accel_gyro()
   sys.exit()
-
-
-
-

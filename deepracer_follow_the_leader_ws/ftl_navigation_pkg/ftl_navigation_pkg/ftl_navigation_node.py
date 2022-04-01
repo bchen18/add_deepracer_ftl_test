@@ -102,6 +102,9 @@ class FTLNavigationNode(Node):
         self.prev_ego_speed = 0
         self.start_time = time.time()
         self.prev_torque = 0
+        #self.f = 0.136768 #found a reference on learnopencv
+        self.f = 0.045333
+        self.lamb = 8.387e-7
         #-------------------------END ADDED CODE-------------------------
 
 
@@ -157,7 +160,7 @@ class FTLNavigationNode(Node):
         self.delta_buffer.put(detection_delta)
 
     #-------------------------BEGIN ADDED CODE-------------------------
-    def get_imu_data(self): 
+    def get_imu_data(self):
         accel_data = []
         gyro_data = []
         imu_dev = bmi160.accel_gyro_dev()
@@ -169,17 +172,32 @@ class FTLNavigationNode(Node):
 
     # Estimates the distance to the front car
     # Use of simple optic geometry
-    def get_front_distance(self, delta):
-        delta_x, delta_y = delta[0], delta[1]
-        tilt = 20 *np.pi/180 # evaluation of camera tilt, need to do proper measurement
-        f = 0.045333 # lens focal [meters]
-        car_height = 0.135 # measurement in meters
-        return np.cos(tilt)*f*(delta_x/car_height)/(delta_x/car_height-1)
+    # def get_front_distance(self, delta):
+    #     delta_x, delta_y = delta[0], delta[1]
+    #     tilt = 20 *np.pi/180 # evaluation of camera tilt, need to do proper measurement
+    #     f = 0.045333 # lens focal [meters]
+    #     car_height = 0.135 # measurement in meters
+    #     return np.cos(tilt)*f*(delta_x/car_height)/(delta_x/car_height-1)
 
-    # Simulate "phantom" front vehicle braking for a demo. 
+    # Estimates the distance to the front car
+    # Uses camera matrix
+    def get_front_distance_camera_matrix(self, delta):
+        _, _, bb_center_x, bb_center_y, target_x, target_y = delta[0], delta[1], delta[2], delta[3], delta[4], delta[5]
+        Pi = np.array([[self.f,0,target_x,0],
+                    [0,self.f,target_y,0],
+                    [0,0,1,0]])
+        relative_pos_vector  = np.linalg.pinv(Pi)@(np.array([[bb_center_x, bb_center_y,1]]).T)-np.array([[6.79995,4.5333,1.0,0.0]]).T
+        #distance = 0
+        self.get_logger().info(f"Pseudo-inverse of C_cam: {relative_pos_vector}")
+        #for i in range(3):
+        #    distance += relative_pos_vector[i]**2
+        distance = np.linalg.norm(relative_pos_vector)/self.lamb
+        return distance
+
+    # Simulate "phantom" front vehicle braking for a demo.
     # Need car_dist as a parameter since it changes each time
     def get_sim_MPC_action(self, car_dist):
-        # if first step of sim, set initial values 
+        # if first step of sim, set initial values
         if self.prev_ego_speed == [0, 0, 0]:
             self.MPC.v_f = 1 # starting speed of "phamtom" front car in m/s
 
@@ -195,14 +213,14 @@ class FTLNavigationNode(Node):
                         [ego_speed]])
 
         self.get_logger().info(f"Before MPC step:{ego_speed}")
-        
+
         # Step MPC with current state
         [feas, x_opt, u_opt, J_opt] = self.MPC.MPC_step(x_t)
         if feas != "infeasible":
             # if MPC finds a solution, use its torque output
             torque = u_opt.value[0][0]
         else:
-            # if MPC can't find solution, use reduced previous torque 
+            # if MPC can't find solution, use reduced previous torque
             torque = self.prev_torque*0.9
         self.prev_torque = torque
         self.get_logger().info(f"After MPC step:{ego_speed}")
@@ -216,10 +234,10 @@ class FTLNavigationNode(Node):
         # Convert MPC's output torque to throttle and update msg
         ########################
         #B: 0.00002*(x**2) + 0.0083*x + 11.461 RPM to PWM
-        #A: y = -13.333x + 20000 RPM to Torque 
+        #A: y = -13.333x + 20000 RPM to Torque
         #1. Calculate RPM from Torque from A
-        #2. Calcualte PWM from RPM using B 
-        #3. Use PWM as an input to servo node 
+        #2. Calcualte PWM from RPM using B
+        #3. Use PWM as an input to servo node
         #########################
         #rpm = (torque - 20000)/(-13.3333)
         #throttle = 0.00002*(rpm**2) + 0.0083*(rpm) + 11.461
@@ -376,7 +394,7 @@ class FTLNavigationNode(Node):
 
                 #-------------------------BEGIN ADDED CODE-------------------------
                 # Test front_distance function
-                front_dist = get_front_distance(detection_delta.delta)
+                front_dist = self.get_front_distance_camera_matrix(detection_delta.delta)
                 self.get_logger().info(f"Front Distance to Front Vehicle:{front_dist}")
 
                 # Use sim MPC to calculate throttle
