@@ -106,7 +106,7 @@ class FTLNavigationNode(Node):
         self.start_time = time.time()
         self.prev_torque = 0
         self.f = 0.136768 #found a reference on learnopencv
-        self.lamb = 8.387e-7
+        self.lamb = 10.36e-5
         #-------------------------END ADDED CODE-------------------------
 
 
@@ -185,14 +185,13 @@ class FTLNavigationNode(Node):
     # Uses camera matrix
     def get_front_distance_camera_matrix(self, delta):
         _, _, bb_center_x, bb_center_y, target_x, target_y = delta[0], delta[1], delta[2], delta[3], delta[4], delta[5]
-        Pi = np.array([[self.f,0,target_x,0],
-                      [0,self.f,target_y,0],
-                      [0,0,1,0]])
-        relative_pos_vector  = np.linalg.pinv(Pi)@(np.array([[bb_center_x, bb_center_y,1]]).T)-np.array([[6.79995,4.5333,1.0,0.0]]).T
+        Pi = np.array([[self.f, 0, 0, 0],
+                       [0, self.f, 0, 0],
+                       [0, 0, 1, 0]])
+        pos_vector  = np.linalg.pinv(Pi)@(np.array([[bb_center_x, bb_center_y,1]]).T)
         distance = 0
-        self.get_logger().info(f"Pseudo-inverse of C_cam: {relative_pos_vector}")
         for i in range(3):
-            distance += relative_pos_vector[i]**2
+            distance += pos_vector[i]**2
         return self.lamb*distance
 
     # Simulate "phantom" front vehicle braking for a demo. 
