@@ -10,7 +10,6 @@ echo " ============================================================"
 source /opt/ros/foxy/setup.bash 
 source /opt/intel/openvino_2021/bin/setupvars.sh
 cd ~/deepracer_ws/add_deepracer_ftl_test/deepracer_follow_the_leader_ws/ 
-./install_dependencies.sh
 rosws update
 rosdep install -i --from-path . --rosdistro foxy -y
 echo ""
