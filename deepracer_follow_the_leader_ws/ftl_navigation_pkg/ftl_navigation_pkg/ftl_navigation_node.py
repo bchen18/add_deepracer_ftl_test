@@ -184,7 +184,7 @@ class FTLNavigationNode(Node):
     # Estimates the distance to the front car
     # Uses camera matrix
     def get_front_distance_camera_matrix(self, delta):
-        _, _, bb_center_x, bb_center_y, target_x, target_y = delta[0], delta[1], delta[2], delta[3], delta[4], delta[5]
+        _, _, bb_center_x, bb_center_y, target_x, target_y, top_left_x, top_left_y, bottom_right_x, bottom_right_y = delta[0], delta[1], delta[2], delta[3], delta[4], delta[5]
         Pi = np.array([[self.f, 0, 0, 0],
                        [0, self.f, 0, 0],
                        [0, 0, 1, 0]])

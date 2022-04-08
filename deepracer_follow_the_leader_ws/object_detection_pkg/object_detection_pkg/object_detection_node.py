@@ -276,9 +276,12 @@ class ObjectDetectionNode(Node):
                         detection_delta = self.calculate_delta(self.target_x,
                                                                self.target_y,
                                                                bb_center_x,
-                                                               bb_center_y)
+                                                               bb_center_y,
+                                                               top_left_x,
+                                                               top_left_y,
+                                                               bottom_right_x,
+                                                               bottom_right_y)
                         # Publish to object_detection_delta topic.
-                        self.get_logger().info(f"Box size in pixels = w:{top_left_x-bottom_right_x}\t h:{top_left_y-bottom_right_y}")
                         self.delta_publisher.publish(detection_delta)
                         # Set the flag that there is a detected object.
                         detected = True
