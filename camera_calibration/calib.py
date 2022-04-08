@@ -42,7 +42,15 @@ vs = VideoStream(src=0).start()
  
 while True:
     image = vs.read()
+    print(type(image))
+    image = cv2.imread(image)
+
+    
     grayColor = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+
+    key = cv2.waitKey(1) & 0xFF
+    if key == ord("q"):
+        break
  
     # Find the chess board corners
     # If desired number of corners are
@@ -97,9 +105,9 @@ while True:
  
     if cv2.waitKey(1) & 0xFF == ord('q'):
         print("[INFO] force quitting...")
-
-        cv2.destroyAllWindows()
  
-
         break
- 
+
+cv2.destroyAllWindows()
+vs.stop()
+print("[INFO] end of program")
