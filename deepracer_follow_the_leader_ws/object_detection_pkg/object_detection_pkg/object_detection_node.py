@@ -36,6 +36,7 @@ import signal
 import threading
 import cv2
 import numpy as np
+from pyzbar import pyzbar 
 import rclpy
 from rclpy.node import Node
 from rclpy.executors import MultiThreadedExecutor
@@ -228,6 +229,31 @@ class ObjectDetectionNode(Node):
         self.get_logger().debug(f"Delta from target position: {delta_x} {delta_y}")
         return delta
 
+    def read_barcode(self, frame):
+        barcodes = pyzbar.decode(frame)
+        biggest_barcode = [0]*4
+        for barcode in barcodes:
+            x, y, w, h = barcode.rect
+            if w>biggest_barcode[2] or h>biggest_barcode[3]:
+                biggest_barcode = [x, y, w, h]
+        if biggest_barcode == [0]*4:
+            detected = False
+        else:
+            detected = True
+        return detected, x, y, w, h
+    
+    def show_barcodes(self, frame, code):
+        x, y, w, h = code[0], code[1], code[2], code[3] 
+        if self.publish_display_output:
+            cv2.rectangle(frame, (x,y), (x+w,y+h), (232, 35, 244),2)
+        cv2.circle(frame, (int(self.target_x), int(self.target_y)),
+                   5,
+                   (0, 255, 0),
+                   -1)
+        display_image = self.bridge.cv2_to_imgmsg(np.array(display_image), "bgr8")
+        self.display_image_publisher.publish(display_image)
+        
+
     def run_inference(self):
         """Method for running inference on received input image.
         """
@@ -238,9 +264,22 @@ class ObjectDetectionNode(Node):
                 sensor_data = self.input_buffer.get()
                 start_time = time.time()
 
+                
+                detected, x, y, w, h = self.read_barcode(sensor_data)
+                code = [x, y, w, h]
+                if detected:
+                    self.delta_publisher.publish(x, y, w, h)
+                else:
+                    self.delta_publisher.publish(self.target_x, self.target_y, self.target_x, self.target_y)
+                
+                if self.publish_display_output:
+                    self.show_barcodes(sensor_data, code) 
+                
+                """
                 # Pre-process input.
                 input_data = {}
                 input_data[self.input_name] = self.preprocess(sensor_data)
+
 
                 # Perform Inference.
                 res = self.exec_net.infer(inputs=input_data)
@@ -298,7 +337,6 @@ class ObjectDetectionNode(Node):
                                                            self.target_x,
                                                            self.target_y)
                     self.delta_publisher.publish(detection_delta)
-
                 if self.publish_display_output:
                     # Change data layout from CHW to HWC.
                     display_image = input_data[self.input_name].transpose((1, 2, 0))
@@ -320,6 +358,8 @@ class ObjectDetectionNode(Node):
                     # Publish to display topic (Can be viewed on localhost:8080).
                     display_image = self.bridge.cv2_to_imgmsg(np.array(display_image), "bgr8")
                     self.display_image_publisher.publish(display_image)
+                """
+                
                 self.get_logger().info(f"Total execution time = {time.time() - start_time}")
         except Exception as ex:
             self.get_logger().error(f"Failed inference step: {ex}")
