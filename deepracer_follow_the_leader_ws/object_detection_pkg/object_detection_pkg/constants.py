@@ -123,5 +123,5 @@ CONFIDENCE_THRESHOLD = 0.4
 MODEL_XML = "/opt/models/frozen_inference_graph.xml"
 MODEL_BIN = "/opt/models/frozen_inference_graph.bin"
 
-# Run inference on CPU instead of MYRIAD by default.
+# Run inference on CPUinstead of MYRIAD by default.
 DEVICE = "CPU"

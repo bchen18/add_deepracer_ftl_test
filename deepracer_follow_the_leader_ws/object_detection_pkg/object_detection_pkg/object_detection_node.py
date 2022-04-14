@@ -206,7 +206,7 @@ class ObjectDetectionNode(Node):
         bb_center_y = top_left_y + ((bottom_right_y - top_left_y) / 2.0)
         return bb_center_x, bb_center_y
 
-    def calculate_delta(self, target_x, target_y, bb_center_x, bb_center_y):
+    def calculate_delta(self, target_x, target_y, bb_center_x, bb_center_y, top_left_x, top_left_y, bottom_right_x, bottom_right_y):
         """Method that calculates the normalized error (delta) of the
            detected object from the target (reference) position
            with respect to x and y axes.
@@ -221,10 +221,12 @@ class ObjectDetectionNode(Node):
             delta (DetectionDeltaMsg): Normalized Error (delta) in x and y respectively
             returned as a list of floats and converted to ObjectDetectionErrorMsg.
         """
+        height = float(bottom_right_y - top_left_y)
+        width = float(bottom_right_x - top_left_x) 
         delta_x = (bb_center_x - target_x) / self.w
         delta_y = (bb_center_y - target_y) / self.h
         delta = DetectionDeltaMsg()
-        delta.delta = [delta_x, delta_y,bb_center_x,bb_center_y, target_x, target_y]
+        delta.delta = [delta_x, delta_y, target_x, target_y, height, width]
         self.get_logger().debug(f"Delta from target position: {delta_x} {delta_y}")
         return delta
 
@@ -272,11 +274,17 @@ class ObjectDetectionNode(Node):
                                                                             top_left_y,
                                                                             bottom_right_x,
                                                                             bottom_right_y)
+                        
+ 
                         # Calculate detection delta.
                         detection_delta = self.calculate_delta(self.target_x,
                                                                self.target_y,
                                                                bb_center_x,
-                                                               bb_center_y)
+                                                               bb_center_y,
+                                                               top_left_x,
+                                                               top_left_y,
+                                                               bottom_right_x,
+                                                               bottom_right_y)
                         # Publish to object_detection_delta topic.
                         self.delta_publisher.publish(detection_delta)
                         # Set the flag that there is a detected object.
@@ -290,10 +298,15 @@ class ObjectDetectionNode(Node):
                         classes[imid].append(label)
                         # Break as soon as specified class is detected.
                         break
-
+                        
+                
                 if not detected:
                     # Assume being at target position.
                     detection_delta = self.calculate_delta(self.target_x,
+                                                           self.target_y,
+                                                           self.target_x,
+                                                           self.target_y,
+                                                           self.target_x,
                                                            self.target_y,
                                                            self.target_x,
                                                            self.target_y)

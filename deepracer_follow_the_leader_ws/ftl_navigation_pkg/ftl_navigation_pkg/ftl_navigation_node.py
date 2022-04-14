@@ -391,6 +391,9 @@ class FTLNavigationNode(Node):
                 # Get a new message to plan action on
                 detection_delta = self.delta_buffer.get()
                 action_category = self.plan_action(detection_delta.delta)
+                width = detection_delta.delta[-1]
+                height = detection_delta.delta[-2]
+                self.get_logger().info(f"X :{width} Y: {height}")
                 msg.angle, msg.throttle = self.get_mapped_action(action_category,
                                                                  self.max_speed_pct)
 
