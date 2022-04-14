@@ -240,7 +240,7 @@ class ObjectDetectionNode(Node):
             detected = False
         else:
             detected = True
-        return detected, x, y, w, h
+        return (detected, x, y, w, h)
     
     def show_barcodes(self, frame, code):
         x, y, w, h = code[0], code[1], code[2], code[3] 
@@ -265,15 +265,20 @@ class ObjectDetectionNode(Node):
                 start_time = time.time()
 
                 image = self.preprocess(sensor_data)
+                self.get_logger().info(f"I went there (1)")
                 detected, x, y, w, h = self.read_barcode(image)
+                self.get_logger().info(f"I went there (2)")
                 code = [x, y, w, h]
                 if detected:
                     self.delta_publisher.publish(x, y, w, h)
+                    self.get_logger().info(f"I went there (3.1)")
                 else:
                     self.delta_publisher.publish(self.target_x, self.target_y, self.target_x, self.target_y)
+                    self.get_logger().info(f"I went there (3.2)")
                 
                 if self.publish_display_output:
-                    self.show_barcodes(sensor_data, code) 
+                    self.show_barcodes(sensor_data, code)
+                    self.get_logger().info(f"I went there (4)") 
                 
                 """
                 # Pre-process input.
