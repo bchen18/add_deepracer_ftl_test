@@ -233,14 +233,14 @@ class ObjectDetectionNode(Node):
         barcodes = pyzbar.decode(frame)
         biggest_barcode = [0]*4
         for barcode in barcodes:
-            x, y, w, h = barcode.rect
-            if w>biggest_barcode[2] or h>biggest_barcode[3]:
-                biggest_barcode = [x, y, w, h]
+            self.x, self.y, self.w, self.h = barcode.rect
+            if self.w>biggest_barcode[2] or self.h>biggest_barcode[3]:
+                biggest_barcode = [self.x, self.y, self.w, self.h]
         if biggest_barcode == [0]*4:
             detected = False
         else:
             detected = True
-        return (detected, x, y, w, h)
+        return (detected, biggest_barcode)
     
     def show_barcodes(self, frame, code):
         x, y, w, h = code[0], code[1], code[2], code[3] 
@@ -266,11 +266,11 @@ class ObjectDetectionNode(Node):
 
                 image = self.preprocess(sensor_data)
                 self.get_logger().info(f"I went there (1)")
-                detected, x, y, w, h = self.read_barcode(image)
+                detected, _ = self.read_barcode(image)
                 self.get_logger().info(f"I went there (2)")
-                code = [x, y, w, h]
+                code = [self.x, self.y, self.w, self.h]
                 if detected:
-                    self.delta_publisher.publish(x, y, w, h)
+                    self.delta_publisher.publish(self.x, self.y, self.w, self.h)
                     self.get_logger().info(f"I went there (3.1)")
                 else:
                     self.delta_publisher.publish(self.target_x, self.target_y, self.target_x, self.target_y)
