@@ -250,7 +250,7 @@ class ObjectDetectionNode(Node):
                    5,
                    (0, 255, 0),
                    -1)
-        display_image = self.bridge.cv2_to_imgmsg(np.array(display_image), "bgr8")
+        display_image = self.bridge.cv2_to_imgmsg(np.array(frame), "bgr8")
         self.display_image_publisher.publish(display_image)
         
 
