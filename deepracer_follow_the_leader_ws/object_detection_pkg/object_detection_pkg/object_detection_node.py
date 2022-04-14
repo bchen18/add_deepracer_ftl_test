@@ -328,6 +328,7 @@ class ObjectDetectionNode(Node):
                             classes[imid] = []
                         classes[imid].append(label)
                         # Break as soon as specified class is detected.
+                        self.get_logger().info(f"Box size in pixels\tw:{top_left_x-bottom_right_x}\th:{top_left_y-bottom_right_y}")
                         break
 
                 if not detected:
