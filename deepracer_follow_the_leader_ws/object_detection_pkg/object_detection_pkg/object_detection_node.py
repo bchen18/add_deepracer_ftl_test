@@ -264,8 +264,8 @@ class ObjectDetectionNode(Node):
                 sensor_data = self.input_buffer.get()
                 start_time = time.time()
 
-                
-                detected, x, y, w, h = self.read_barcode(sensor_data)
+                image = self.preprocess(sensor_data)
+                detected, x, y, w, h = self.read_barcode(image)
                 code = [x, y, w, h]
                 if detected:
                     self.delta_publisher.publish(x, y, w, h)
