@@ -233,19 +233,18 @@ class ObjectDetectionNode(Node):
         barcodes = pyzbar.decode(frame)
         biggest_barcode = [0]*4
         for barcode in barcodes:
-            self.x, self.y, self.w, self.h = barcode.rect
-            if self.w>biggest_barcode[2] or self.h>biggest_barcode[3]:
-                biggest_barcode = [self.x, self.y, self.w, self.h]
+            bb_center_x, bb_center_y, width, height = barcode.rect
+            if width>biggest_barcode[2] or height>biggest_barcode[3]:
+                biggest_barcode = [bb_center_x, bb_center_y, width, height]
         if biggest_barcode == [0]*4:
             detected = False
         else:
             detected = True
-        return (detected, biggest_barcode)
+        return (detected, bb_center_x, bb_center_y, width, height)
     
-    def show_barcodes(self, frame, code):
-        x, y, w, h = code[0], code[1], code[2], code[3] 
+    def show_barcodes(self, frame, x_pos, y_pos, width, height):
         if self.publish_display_output:
-            cv2.rectangle(frame, (x,y), (x+w,y+h), (232, 35, 244),2)
+            cv2.rectangle(frame, (x_pos,y_pos), (x_pos+width,y_pos+height), (232, 35, 244),2)
         cv2.circle(frame, (int(self.target_x), int(self.target_y)),
                    5,
                    (0, 255, 0),
@@ -264,20 +263,22 @@ class ObjectDetectionNode(Node):
                 sensor_data = self.input_buffer.get()
                 start_time = time.time()
 
-                image = self.preprocess(sensor_data)
+                frame = self.preprocess(sensor_data)
                 self.get_logger().info(f"I went there (1)")
-                detected, _ = self.read_barcode(image)
+                detected, bb_center_x, bb_center_y, width, height = self.read_barcode(frame)
                 self.get_logger().info(f"I went there (2)")
-                code = [self.x, self.y, self.w, self.h]
+
                 if detected:
-                    self.delta_publisher.publish(self.x, self.y, self.w, self.h)
+                    delta = self.calculate_delta(self.target_x, self.target_y, bb_center_x, bb_center_y)
+                    self.delta_publisher.publish(delta)
                     self.get_logger().info(f"I went there (3.1)")
                 else:
-                    self.delta_publisher.publish(self.target_x, self.target_y, self.target_x, self.target_y)
+                    delta = self.calculate_delta(self.target_x, self.target_y, self.target_x, self.target_y)
+                    self.delta_publisher.publish(delta)
                     self.get_logger().info(f"I went there (3.2)")
                 
                 if self.publish_display_output:
-                    self.show_barcodes(sensor_data, code)
+                    self.show_barcodes(sensor_data, frame, bb_center_x, bb_center_y, width, height)
                     self.get_logger().info(f"I went there (4)") 
                 
                 """
