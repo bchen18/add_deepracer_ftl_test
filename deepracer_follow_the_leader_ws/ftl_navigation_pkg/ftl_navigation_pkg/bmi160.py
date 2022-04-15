@@ -3,7 +3,7 @@ import sys, getopt
 from time import sleep
 import os
 
-bus = SMBus(1)
+bus = SMBus(2)
 
 BMI160_DEVICE_ADDRESS = 0x68
 
@@ -83,18 +83,18 @@ z_accelOffset = 0
 class accel_gyro_dev():
 
   def chip_init(self):
-    busid = 0
-    global bus
-    while (busid < 10):
-      try:
-        bus = SMBus(busid)
-        chipid = bus.read_byte_data(BMI160_DEVICE_ADDRESS, BMI160_REGA_USR_CHIP_ID)
-        break
-      except Exception as e:
-        busid += 1
-      #chipid = bus.read_byte_data(BMI160_DEVICE_ADDRESS, BMI160_REGA_USR_CHIP_ID)
+    #busid = 0
+    #global bus
+    #while (busid < 10):
+    #  try:
+    #    bus = SMBus(busid)
+    #    chipid = bus.read_byte_data(BMI160_DEVICE_ADDRESS, BMI160_REGA_USR_CHIP_ID)
+    #    break
+    #  except Exception as e:
+    #    busid += 1
+    chipid = bus.read_byte_data(BMI160_DEVICE_ADDRESS, BMI160_REGA_USR_CHIP_ID)
 
-    print("FOUND BUSID: %s"%busid)
+    #print("FOUND BUSID: %s"%busid)
     print("---------")
     if chipid == 0xD1 :
       print("chip id is 0x%X, BMI160" % chipid)
@@ -110,7 +110,7 @@ class accel_gyro_dev():
     bus.write_byte_data(BMI160_DEVICE_ADDRESS, BMI160_REGA_USR_GYR_RANGE_ADDR, 0x0)
 
     #command register
-    #bus.write_byte_data(BMI160_DEVICE_ADDRESS, BMI160_REGA_CMD_CMD_ADDR, CMD_SOFT_RESET_REG)
+    bus.write_byte_data(BMI160_DEVICE_ADDRESS, BMI160_REGA_CMD_CMD_ADDR, CMD_SOFT_RESET_REG)
 
 
   def reg_read_bits(self,reg, pos, len):
@@ -363,6 +363,8 @@ class accel_gyro_dev():
     self.setAccelOffsetEnabled(1)
 
   def show_accel_gyro(self):
+    self.enable_accel()
+    self.enable_gyro()
     self.read_gyro()
     self.read_accel()
     print("Apply Platform Matrix")
@@ -408,6 +410,7 @@ class accel_gyro_dev():
 if __name__ == '__main__':
 
   instance = accel_gyro_dev()
-  #instance.chip_init()
+  instance.chip_init()
+  instance.calibration_process()
   instance.show_accel_gyro()
   sys.exit()

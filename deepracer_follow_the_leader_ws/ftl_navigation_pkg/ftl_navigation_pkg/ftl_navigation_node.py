@@ -107,6 +107,7 @@ class FTLNavigationNode(Node):
         self.f = 0.136768 #found a reference on learnopencv
         #self.f = 0.045333
         self.lamb = 1
+        self.prev_car_dist = 0
         #-------------------------END ADDED CODE-------------------------
 
 
@@ -162,10 +163,10 @@ class FTLNavigationNode(Node):
         self.delta_buffer.put(detection_delta)
 
     #-------------------------BEGIN ADDED CODE-------------------------
-    def get_imu_data(self):
+    def get_imu_data(self, imu_dev):
         accel_data = []
         gyro_data = []
-        imu_dev = bmi160.accel_gyro_dev()
+        #imu_dev = bmi160.accel_gyro_dev()
         accel_data,gyro_data = imu_dev.show_accel_gyro()
         return accel_data,gyro_data
 
@@ -200,16 +201,18 @@ class FTLNavigationNode(Node):
 
     # Simulate "phantom" front vehicle braking for a demo.
     # Need car_dist as a parameter since it changes each time
-    def get_sim_MPC_action(self, car_dist):
+    def get_sim_MPC_action(self, car_dist, imu_dev):
         # if first step of sim, set initial values
-        if self.prev_ego_speed == [0, 0, 0]:
-            self.MPC.v_f = 1 # starting speed of "phamtom" front car in m/s
+        #if self.prev_ego_speed == [0, 0, 0]:
+        #    self.MPC.v_f = 1 # starting speed of "phamtom" front car in m/s
 
+        #self.MPC.v_f = (car_dist - self.prev_car_dist)/0.1 + ego_speed
         # get current ego vehicle speed
-        accel_data,gyro_data = self.get_imu_data()
+        accel_data,gyro_data = self.get_imu_data(imu_dev)
 
         self.get_logger().info(f"Accelerometer data:{accel_data} gyro data: {gyro_data}")
         ego_speed = self.prev_ego_speed + accel_data[0]*0.1
+        self.MPC.v_f = (car_dist - self.prev_car_dist)/0.1 + ego_speed
         self.prev_ego_speed = ego_speed
 
         # construct state vector
@@ -230,10 +233,12 @@ class FTLNavigationNode(Node):
         self.get_logger().info(f"After MPC step:{ego_speed}")
 
         # calculate new distance between cars and slow down "phantom" front car
-        car_dist += (self.MPC.v_f - ego_speed)*0.1
+        #car_dist += (self.MPC.v_f - ego_speed)*0.1
         time_elapsed = time.time() - self.start_time
-        if time_elapsed > 20: # after 2 seconds, simulate slowing down "phantom" front car
-            self.MPC.v_f = max(0, 1 - 0.1*(time_elapsed - 20)) # slow down by 0.1 m/s each second, clipped at 0 m/s
+        #if time_elapsed > 20: # after 2 seconds, simulate slowing down "phantom" front car
+        #    self.MPC.v_f = max(0, 1 - 0.1*(time_elapsed - 20)) # slow down by 0.1 m/s each second, clipped at 0 m/s
+        #self.MPC.v_f = (car_dist - self.prev_car_dist)/0.1 + ego_speed
+        self.prev_car_dist = car_dist
 
         # Convert MPC's output torque to throttle and update msg
         ########################
@@ -387,6 +392,10 @@ class FTLNavigationNode(Node):
         """
         #-------------------------BEGIN ADDED CODE-------------------------
         sim_car_dist = 1 # for sim MPC
+        front_dist = 0
+        imu_dev = bmi160.accel_gyro_dev()
+        imu_dev.chip_init()
+        imu_dev.calibration_process()
         #-------------------------END ADDED CODE-------------------------
         try:
             while not self.stop_thread:
@@ -402,11 +411,12 @@ class FTLNavigationNode(Node):
                 #-------------------------BEGIN ADDED CODE-------------------------
                 # Test front_distance function
                 #front_dist = self.get_front_distance_camera_matrix(detection_delta.delta)
-                front_dist = KNOWN_HEIGHT * FOCAL_LENGTH / measured_height
+                if measured_height != 0 :
+                    front_dist = KNOWN_HEIGHT * FOCAL_LENGTH / measured_height
                 self.get_logger().info(f"Front Distance to Front Vehicle:{front_dist}")
 
                 # Use sim MPC to calculate throttle
-                msg.throttle, front_dist = self.get_sim_MPC_action(front_dist)
+                msg.throttle, front_dist = self.get_sim_MPC_action(front_dist, imu_dev)
                 #-------------------------END ADDED CODE-------------------------
 
                 # Publish msg based on action planned and mapped from a new object detection.
@@ -426,7 +436,7 @@ class FTLNavigationNode(Node):
 
                     #-------------------------BEGIN ADDED CODE-------------------------
                     # Use sim MPC to calculate throttle
-                    msg.throttle, front_dist = self.get_sim_MPC_action(front_dist)
+                    msg.throttle, front_dist = self.get_sim_MPC_action(front_dist, imu_dev)
                     #-------------------------END ADDED CODE-------------------------
 
                     # Publish blind action
