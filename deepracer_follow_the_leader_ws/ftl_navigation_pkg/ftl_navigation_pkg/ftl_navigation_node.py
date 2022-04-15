@@ -48,6 +48,8 @@ from ftl_navigation_pkg import (constants,
                                 utils, bmi160, deepracer_MPC)
 import numpy as np
 
+KNOWN_HEIGHT = 0.1
+FOCAL_LENGTH = 351.6633333
 
 class FTLNavigationNode(Node):
     """Node responsible for deciding the action messages (servo control messages specifically angle
@@ -186,7 +188,7 @@ class FTLNavigationNode(Node):
         Pi = np.array([[self.f,0,target_x,0],
                     [0,self.f,target_y,0],
                     [0,0,1,0]])
-        self.get_logger().info(f"bb_center_x {bb_center_x}, bb_center_y {bb_center_y}, target_x {target_x}, target_y {target_y}, delta[0] {delta[0]}, delta[1] {delta[1]}")  
+        self.get_logger().info(f"bb_center_x {bb_center_x}, bb_center_y {bb_center_y}, target_x {target_x}, target_y {target_y}, delta[0] {delta[0]}, delta[1] {delta[1]}")
         relative_pos_vector  = np.linalg.pinv(Pi)@(np.array([[bb_center_x, bb_center_y,1]]).T)-np.array([[6.79995,4.5333,1.0,0.0]]).T
         #self.get_logger().info(f"relative_pos_vector {relative_pos_vector}")
         #distance = 0
@@ -391,19 +393,20 @@ class FTLNavigationNode(Node):
                 # Get a new message to plan action on
                 detection_delta = self.delta_buffer.get()
                 action_category = self.plan_action(detection_delta.delta)
-                width = detection_delta.delta[-1]
-                height = detection_delta.delta[-2]
-                self.get_logger().info(f"X :{width} Y: {height}")
+                measured_width = detection_delta.delta[-1]
+                measured_height = detection_delta.delta[-2]
+                self.get_logger().info(f"X :{measured_width} Y: {measured_height}")
                 msg.angle, msg.throttle = self.get_mapped_action(action_category,
                                                                  self.max_speed_pct)
 
                 #-------------------------BEGIN ADDED CODE-------------------------
                 # Test front_distance function
-                front_dist = self.get_front_distance_camera_matrix(detection_delta.delta)
+                #front_dist = self.get_front_distance_camera_matrix(detection_delta.delta)
+                front_dist = KNOWN_HEIGHT * FOCAL_LENGTH / measured_height
                 self.get_logger().info(f"Front Distance to Front Vehicle:{front_dist}")
 
                 # Use sim MPC to calculate throttle
-                msg.throttle, sim_car_dist = self.get_sim_MPC_action(sim_car_dist)
+                msg.throttle, front_dist = self.get_sim_MPC_action(front_dist)
                 #-------------------------END ADDED CODE-------------------------
 
                 # Publish msg based on action planned and mapped from a new object detection.
@@ -423,7 +426,7 @@ class FTLNavigationNode(Node):
 
                     #-------------------------BEGIN ADDED CODE-------------------------
                     # Use sim MPC to calculate throttle
-                    msg.throttle, sim_car_dist = self.get_sim_MPC_action(sim_car_dist)
+                    msg.throttle, front_dist = self.get_sim_MPC_action(front_dist)
                     #-------------------------END ADDED CODE-------------------------
 
                     # Publish blind action
