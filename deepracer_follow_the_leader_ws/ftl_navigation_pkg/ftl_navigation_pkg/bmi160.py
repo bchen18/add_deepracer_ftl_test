@@ -408,7 +408,7 @@ class accel_gyro_dev():
 if __name__ == '__main__':
   
   instance = accel_gyro_dev()
-  instance.chip_init()
+  #instance.chip_init()
   instance.show_accel_gyro()
   sys.exit()
 
