@@ -232,6 +232,7 @@ class ObjectDetectionNode(Node):
     def read_barcode(self, frame):
         barcodes = pyzbar.decode(frame)
         biggest_barcode = [0]*4
+        bb_center_x, bb_center_y, width, height = 0, 0, 0, 0
         for barcode in barcodes:
             bb_center_x, bb_center_y, width, height = barcode.rect
             if width>biggest_barcode[2] or height>biggest_barcode[3]:
