@@ -212,7 +212,7 @@ class FTLNavigationNode(Node):
 
         self.get_logger().info(f"Accelerometer data:{accel_data} gyro data: {gyro_data}")
         ego_speed = self.prev_ego_speed + accel_data[0]*0.1
-        self.MPC.v_f = (car_dist - self.prev_car_dist)/0.1 + ego_speed
+        self.MPC.v_f = (car_dist - self.prev_car_dist)/0.1 + self.prev_ego_speed
         self.prev_ego_speed = ego_speed
 
         # construct state vector
@@ -419,6 +419,7 @@ class FTLNavigationNode(Node):
                 msg.throttle, front_dist = self.get_sim_MPC_action(front_dist, imu_dev)
                 #-------------------------END ADDED CODE-------------------------
 
+                self.get_logger().info(f"THROTTLE FROM MPC: {msg.throttle}")
                 # Publish msg based on action planned and mapped from a new object detection.
                 self.action_publisher.publish(msg)
                 max_speed_pct = self.max_speed_pct
