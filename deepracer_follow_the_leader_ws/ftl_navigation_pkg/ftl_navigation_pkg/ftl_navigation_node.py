@@ -209,7 +209,7 @@ class FTLNavigationNode(Node):
         # get current ego vehicle speed
         accel_data,gyro_data = self.get_imu_data()
         self.get_logger().info(f"Accelerometer data:{accel_data} gyro data: {gyro_data}")
-        ego_speed = self.prev_ego_speed + accel_data[0]*0.1
+        ego_speed = self.prev_ego_speed + accel_data[1]*0.1
         self.prev_ego_speed = ego_speed
         self.get_logger().info(f"Current ego speed:{ego_speed}")
 
@@ -256,7 +256,7 @@ class FTLNavigationNode(Node):
         # get current ego vehicle speed
         accel_data,gyro_data = self.get_imu_data(imu_dev)
         self.get_logger().info(f"Accelerometer data:{accel_data} gyro data: {gyro_data}")
-        ego_speed = self.prev_ego_speed + accel_data[0]*0.1
+        ego_speed = self.prev_ego_speed + accel_data[1]*0.1
         self.prev_ego_speed = ego_speed
         self.get_logger().info(f"Current ego speed:{ego_speed}")
 
