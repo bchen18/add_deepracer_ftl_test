@@ -102,6 +102,8 @@ class ObjectDetectionNode(Node):
                                                      qos_profile)
         self.bridge = CvBridge()
 
+        self.detector = cv2.QRCodeDetector()
+
         # Launching a separate thread to run inference.
         self.stop_thread = False
         self.thread_initialized = False
@@ -202,7 +204,10 @@ class ObjectDetectionNode(Node):
         return delta
 
     def read_barcode(self, frame):
-        barcodes = pyzbar.decode(frame)
+        texts, points, _ = self.detector.detectAndDecode(frame)
+        self.get_logger().info(f"Reading QR codes...")
+        self.get_logger().info("Txts {}\tBBoxes {}".format(texts,points))
+        barcodes = [0]
         bb_center_x, bb_center_y, width, height = 0, 0, 0, 0
         biggest_barcode = [0]*4
         for barcode in barcodes:
@@ -218,8 +223,11 @@ class ObjectDetectionNode(Node):
     def show_barcodes(self, frame, x_pos, y_pos, width, height):
         self.get_logger().info(f"Starting show_barcodes...")
         if self.publish_display_output:
-            cv2.rectangle(np.array(frame), (x_pos,y_pos), (x_pos+width,y_pos+height), (232, 35, 244),2)
+            self.get_logger().info("Showing the numpy image...\n {}".format(frame))
             self.get_logger().info(f"Shows went there (1)")
+            normalized_frame = cv2.imread(frame)
+            cv2.rectangle(normalized_frame, (x_pos,y_pos), (x_pos+width,y_pos+height), (232, 35, 244),2)
+            self.get_logger().info(f"Shows went there (2)")
         cv2.circle(np.array(frame), (int(self.target_x), int(self.target_y)),
                    5,
                    (0, 255, 0),
@@ -255,11 +263,12 @@ class ObjectDetectionNode(Node):
                     self.delta_publisher.publish(delta)
                     self.get_logger().info(f"I went there (3.2)")
                 
+                """
                 if self.publish_display_output:
                     self.show_barcodes(frame, bb_center_x, bb_center_y, width, height)
                     self.get_logger().info(f"I went there (4)") 
                 
-                """
+                
                 # Pre-process input.
                 input_data = {}
                 input_data[self.input_name] = self.preprocess(sensor_data)

@@ -203,7 +203,7 @@ class FTLNavigationNode(Node):
         self.get_logger().info(f"Before MPC step:{ego_speed}")
         
         # Step MPC with current states
-        # [feas, x_opt, u_opt, J_opt] = self.MPC.MPC_step(x_t) #----------UNCOMMENT LATER ------------
+        [feas, x_opt, u_opt, J_opt] = self.MPC.MPC_step(x_t) #----------UNCOMMENT LATER ------------
         if feas != "infeasible":
             # if MPC finds a solution, use its torque output
             torque = u_opt.value[0][0]
