@@ -295,6 +295,18 @@ class FTLNavigationNode(Node):
 
         return throttle
 
+    # Simple controller that returns throttle based on car distance
+    def simple_controller(self, car_dist, imu_dev):
+        desired_dist = 0.15
+        accel_data,gyro_data = self.get_imu_data(imu_dev)
+        self.get_logger().info(f"Accelerometer data:{accel_data} gyro data: {gyro_data}")
+        if car_dist > desired_dist:
+            throttle = 0.5
+        else:
+            throttle = -0.5
+        return throttle
+
+
     #-------------------------END ADDED CODE-------------------------
 
     def plan_action(self, delta):
@@ -454,8 +466,9 @@ class FTLNavigationNode(Node):
                 self.get_logger().info(f"Front Distance to Front Vehicle:{front_dist}")
 
                 # Use MPC to calculate throttle
+                msg.throttle = simple_controller(front_dist, imu_dev)
                 #msg.throttle, sim_car_dist = self.get_sim_MPC_action(sim_car_dist, imu_dev)
-                msg.throttle = self.get_MPC_action(front_dist, imu_dev)
+                #msg.throttle = self.get_MPC_action(front_dist, imu_dev)
                 #-------------------------END ADDED CODE-------------------------
 
                 # Publish msg based on action planned and mapped from a new object detection.
@@ -475,8 +488,9 @@ class FTLNavigationNode(Node):
 
                     #-------------------------BEGIN ADDED CODE-------------------------
                     # Use MPC to calculate throttle
+                    msg.throttle = simple_controller(front_dist, imu_dev)
                     #msg.throttle, sim_car_dist = self.get_sim_MPC_action(sim_car_dist, imu_dev)
-                    msg.throttle = self.get_MPC_action(front_dist, imu_dev)
+                    #msg.throttle = self.get_MPC_action(front_dist, imu_dev)
                     #-------------------------END ADDED CODE-------------------------
 
                     # Publish blind action
