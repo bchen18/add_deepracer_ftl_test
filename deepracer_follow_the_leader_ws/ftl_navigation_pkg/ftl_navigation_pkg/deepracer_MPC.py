@@ -35,7 +35,7 @@ class MPC():
 
         # Define constraints
         self.v_low = 0
-        self.v_high = 5
+        self.v_high = 1
         self.d_min = 0.1
         self.torque_low = -0.0174
         self.torque_high = 0.0174
