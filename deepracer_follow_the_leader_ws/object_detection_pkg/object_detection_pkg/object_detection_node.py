@@ -102,7 +102,6 @@ class ObjectDetectionNode(Node):
                                                      qos_profile)
         self.bridge = CvBridge()
 
-        self.detector = cv2.QRCodeDetector()
 
         # Launching a separate thread to run inference.
         self.stop_thread = False
@@ -204,71 +203,54 @@ class ObjectDetectionNode(Node):
         return delta
 
     def read_barcode(self, frame):
-        texts, points, _ = self.detector.detectAndDecode(frame)
-        self.get_logger().info(f"Reading QR codes...")
-        self.get_logger().info("Txts {}\tBBoxes {}".format(texts,points))
-        barcodes = [0]
+        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+        barcodes = decode(gray)
         bb_center_x, bb_center_y, width, height = 0, 0, 0, 0
-        biggest_barcode = [0]*4
-        for barcode in barcodes:
-            bb_center_x, bb_center_y, width, height = barcode.rect
-            if width>biggest_barcode[2] or height>biggest_barcode[3]:
-                biggest_barcode = [bb_center_x, bb_center_y, width, height]
-        if biggest_barcode == [0]*4:
+        x, y, w, h = 0, 0, 0, 0
+        if len(barcodes)==0:
             detected = False
         else:
-            detected = True
+            for barcode in barcodes:
+                (x, y, w, h) = barcode.rect
+                detected = True
+                if w>=width or h>=height:
+                     bb_center_x, bb_center_y = int(x+w/2), int(y+h/2)
+            self.get_logger().info(f"Saw smg!: {bb_center_x} {bb_center_y}") 
         return (detected, bb_center_x, bb_center_y, width, height)
     
     def show_barcodes(self, frame, x_pos, y_pos, width, height):
-        self.get_logger().info(f"Starting show_barcodes...")
-        if self.publish_display_output:
-            self.get_logger().info("Showing the numpy image...\n {}".format(frame))
-            self.get_logger().info(f"Shows went there (1)")
-            normalized_frame = cv2.imread(frame)
-            cv2.rectangle(normalized_frame, (x_pos,y_pos), (x_pos+width,y_pos+height), (232, 35, 244),2)
-            self.get_logger().info(f"Shows went there (2)")
-        cv2.circle(np.array(frame), (int(self.target_x), int(self.target_y)),
+        cv2.rectangle(frame, (x_pos,y_pos), (x_pos+width,y_pos+height), (232, 35, 244),2)
+        cv2.circle(frame, (int(self.target_x), int(self.target_y)),
                    5,
                    (0, 255, 0),
                    -1)
-        self.get_logger().info(f"Shows went there (2)")
         display_image = self.bridge.cv2_to_imgmsg(np.array(frame), "bgr8")
-        self.get_logger().info(f"Shows went there (3)")
         self.display_image_publisher.publish(display_image)
-        self.get_logger().info(f"Shows went there (4)")
-        
 
     def run_inference(self):
         """Method for running inference on received input image.
         """
-
         try:
             while not self.stop_thread:
                 # Get an input image from double buffer.
                 sensor_data = self.input_buffer.get()
                 start_time = time.time()
 
-                frame = self.preprocess(sensor_data)
-                self.get_logger().info(f"I went there (1)")
+                frame = self.preprocess(sensor_data).transpose((1, 2, 0))
                 detected, bb_center_x, bb_center_y, width, height = self.read_barcode(frame)
-                self.get_logger().info(f"I went there (2)")
 
                 if detected:
                     delta = self.calculate_delta(self.target_x, self.target_y, bb_center_x, bb_center_y)
                     self.delta_publisher.publish(delta)
-                    self.get_logger().info(f"I went there (3.1)")
                 else:
                     delta = self.calculate_delta(self.target_x, self.target_y, self.target_x, self.target_y)
                     self.delta_publisher.publish(delta)
-                    self.get_logger().info(f"I went there (3.2)")
-                
-                """
+                    
                 if self.publish_display_output:
                     self.show_barcodes(frame, bb_center_x, bb_center_y, width, height)
-                    self.get_logger().info(f"I went there (4)") 
                 
                 
+                """
                 # Pre-process input.
                 input_data = {}
                 input_data[self.input_name] = self.preprocess(sensor_data)
@@ -353,7 +335,6 @@ class ObjectDetectionNode(Node):
                     display_image = self.bridge.cv2_to_imgmsg(np.array(display_image), "bgr8")
                     self.display_image_publisher.publish(display_image)
                 """
-                
                 self.get_logger().info(f"Total execution time = {time.time() - start_time}")
         except Exception as ex:
             self.get_logger().error(f"Failed inference step: {ex}")
