@@ -60,7 +60,7 @@ class FTLNavigationNode(Node):
         """Create a FTLNavigationNode.
         """
         super().__init__('ftl_navigation_node')
-        self.get_logger().info("ftl_navigation_node started.")
+#        self.get_logger().info("ftl_navigation_node started.")
 
         # Double buffer to hold the input deltas in x and y from Object Detection.
         self.delta_buffer = utils.DoubleBuffer(clear_data_on_get=True)
@@ -96,7 +96,7 @@ class FTLNavigationNode(Node):
         self.thread = threading.Thread(target=self.action_publish, args=(msg,))
         self.thread.start()
         self.thread_initialized = True
-        self.get_logger().info(f"Waiting for input delta: {constants.OBJECT_DETECTION_DELTA_TOPIC}")
+#        self.get_logger().info(f"Waiting for input delta: {constants.OBJECT_DETECTION_DELTA_TOPIC}")
 
         #-------------------------BEGIN ADDED CODE-------------------------
         # Create MPC controller and necessary variables
@@ -116,7 +116,7 @@ class FTLNavigationNode(Node):
         """
         if self.thread_initialized:
             self.thread.join()
-            self.get_logger().info("Thread joined")
+#            self.get_logger().info("Thread joined")
 
     def thread_shutdown(self):
         """Function which sets the flag to shutdown background thread.
@@ -141,10 +141,10 @@ class FTLNavigationNode(Node):
         self.lock.acquire()
         try:
             self.max_speed_pct = req.max_speed_pct
-            self.get_logger().info(f"Incoming request: max_speed_pct: {req.max_speed_pct}")
+#            self.get_logger().info(f"Incoming request: max_speed_pct: {req.max_speed_pct}")
             res.error = 0
         except Exception as ex:
-            self.get_logger().error(f"Failed set max speed pct: {ex}")
+#            self.get_logger().error(f"Failed set max speed pct: {ex}")
             res.error = 1
         finally:
             self.lock.release()
@@ -189,11 +189,11 @@ class FTLNavigationNode(Node):
         Pi = np.array([[self.f,0,target_x,0],
                     [0,self.f,target_y,0],
                     [0,0,1,0]])
-        self.get_logger().info(f"bb_center_x {bb_center_x}, bb_center_y {bb_center_y}, target_x {target_x}, target_y {target_y}, delta[0] {delta[0]}, delta[1] {delta[1]}")
+#        self.get_logger().info(f"bb_center_x {bb_center_x}, bb_center_y {bb_center_y}, target_x {target_x}, target_y {target_y}, delta[0] {delta[0]}, delta[1] {delta[1]}")
         relative_pos_vector  = np.linalg.pinv(Pi)@(np.array([[bb_center_x, bb_center_y,1]]).T)-np.array([[6.79995,4.5333,1.0,0.0]]).T
-        #self.get_logger().info(f"relative_pos_vector {relative_pos_vector}")
+#        #self.get_logger().info(f"relative_pos_vector {relative_pos_vector}")
         #distance = 0
-        self.get_logger().info(f"Pseudo-inverse of C_cam: {relative_pos_vector}")
+#        self.get_logger().info(f"Pseudo-inverse of C_cam: {relative_pos_vector}")
         #for i in range(3):
         #    distance += relative_pos_vector[i]**2
         distance = np.linalg.norm(relative_pos_vector[:-1])/self.lamb
@@ -201,7 +201,7 @@ class FTLNavigationNode(Node):
 
     # Simulate "phantom" front vehicle braking for a demo.
     # Need car_dist as a parameter since it changes each time
-    def get_sim_MPC_action(self, car_dist, imu_dev):
+    def get_sim_MPC_action(self, car_dist, imu_dev, count):
         # if first step of sim, set initial values
         #if self.prev_ego_speed == [0, 0, 0]:
         #    self.MPC.v_f = 1 # starting speed of "phamtom" front car in m/s
@@ -211,7 +211,9 @@ class FTLNavigationNode(Node):
         accel_data,gyro_data = self.get_imu_data(imu_dev)
 
         self.get_logger().info(f"Accelerometer data:{accel_data} gyro data: {gyro_data}")
-        ego_speed = self.prev_ego_speed + accel_data[0]*0.1
+        ego_speed = self.prev_ego_speed + accel_data[1]*0.1
+        if abs(accel_data[1]) < 0.10: 
+            ego_speed = 0
         self.MPC.v_f = (car_dist - self.prev_car_dist)/0.1 + self.prev_ego_speed
         self.prev_ego_speed = ego_speed
 
@@ -229,8 +231,15 @@ class FTLNavigationNode(Node):
         else:
             # if MPC can't find solution, use reduced previous torque
             torque = self.prev_torque*0.9
+        
+        if (car_dist == 0) and (count % 4 == 0):  
+            torque = 0
+            #imu_dev.calibration_process()
+            
+            
+        torque = torque/1.905
         self.prev_torque = torque
-        self.get_logger().info(f"After MPC step:{ego_speed}")
+#        self.get_logger().info(f"After MPC step:{ego_speed}")
 
         # calculate new distance between cars and slow down "phantom" front car
         #car_dist += (self.MPC.v_f - ego_speed)*0.1
@@ -252,9 +261,11 @@ class FTLNavigationNode(Node):
         #throttle = 0.00002*(rpm**2) + 0.0083*(rpm) + 11.461
 
         # Normalize torque betwen -1 and 1 to pass into get_rescaled_manual_speed
+        self.get_logger().info(f"TORQUE:{torque}")
         throttle = self.normalize_neg_1_to_1(torque, self.MPC.torque_low, self.MPC.torque_high)
-        throttle = self.get_rescaled_manual_speed(throttle , self.max_speed_pct)
-
+#        self.get_logger().info(f"NORMALIZED: {throttle}")
+        throttle = self.get_rescaled_manual_speed(-1*throttle , self.max_speed_pct)
+        self.get_logger().info(f"RESCALED: {throttle}")
         return throttle, car_dist
     #-------------------------END ADDED CODE-------------------------
 
@@ -324,7 +335,7 @@ class FTLNavigationNode(Node):
             throttle (float): Throttle value to be published to servo.
         """
         action = constants.ACTION_SPACE[action_category][constants.ActionSpaceKeys.ACTION]
-        self.get_logger().info(action)
+#        self.get_logger().info(action)
         angle = constants.ACTION_SPACE[action_category][constants.ActionSpaceKeys.ANGLE]
         categorized_throttle = \
             constants.ACTION_SPACE[action_category][constants.ActionSpaceKeys.THROTTLE]
@@ -393,13 +404,21 @@ class FTLNavigationNode(Node):
         #-------------------------BEGIN ADDED CODE-------------------------
         sim_car_dist = 1 # for sim MPC
         front_dist = 0
+        count = 0
         imu_dev = bmi160.accel_gyro_dev()
         imu_dev.chip_init()
         imu_dev.calibration_process()
         #-------------------------END ADDED CODE-------------------------
         try:
             while not self.stop_thread:
+                #count += 1
+                #if count > 1000000: 
+                #    count = 0
                 # Get a new message to plan action on
+                #imu_dev.calibration_process()
+                #if count % 15  == 0: 
+                #    imu_dev.calibration_process()
+                
                 detection_delta = self.delta_buffer.get()
                 action_category = self.plan_action(detection_delta.delta)
                 measured_width = detection_delta.delta[-1]
@@ -413,13 +432,19 @@ class FTLNavigationNode(Node):
                 #front_dist = self.get_front_distance_camera_matrix(detection_delta.delta)
                 if measured_height != 0 :
                     front_dist = KNOWN_HEIGHT * FOCAL_LENGTH / measured_height
-                self.get_logger().info(f"Front Distance to Front Vehicle:{front_dist}")
+                    count = 0
+                else :
+                    front_dist = 0
+                    count += 1
+
+#                self.get_logger().info(f"Front Distance to Front Vehicle:{front_dist}")
 
                 # Use sim MPC to calculate throttle
-                msg.throttle, front_dist = self.get_sim_MPC_action(front_dist, imu_dev)
+                msg.throttle, front_dist = self.get_sim_MPC_action(front_dist, imu_dev, count)
                 #-------------------------END ADDED CODE-------------------------
+                
 
-                self.get_logger().info(f"THROTTLE FROM MPC: {msg.throttle}")
+#                self.get_logger().info(f"THROTTLE FROM MPC: {msg.throttle}")
                 # Publish msg based on action planned and mapped from a new object detection.
                 self.action_publisher.publish(msg)
                 max_speed_pct = self.max_speed_pct
@@ -437,7 +462,7 @@ class FTLNavigationNode(Node):
 
                     #-------------------------BEGIN ADDED CODE-------------------------
                     # Use sim MPC to calculate throttle
-                    msg.throttle, front_dist = self.get_sim_MPC_action(front_dist, imu_dev)
+                    msg.throttle, front_dist = self.get_sim_MPC_action(front_dist, imu_dev, count)
                     #-------------------------END ADDED CODE-------------------------
 
                     # Publish blind action
@@ -445,7 +470,7 @@ class FTLNavigationNode(Node):
                     # Sleep before checking if new data is available.
                     time.sleep(0.1)
         except Exception as ex:
-            self.get_logger().error(f"Failed to publish action to servo: {ex}")
+#            self.get_logger().error(f"Failed to publish action to servo: {ex}")
             # Stop the car
             msg.angle, msg.throttle = constants.ActionValues.DEFAULT, constants.ActionValues.DEFAULT
             self.action_publisher.publish(msg)
@@ -471,7 +496,7 @@ def main(args=None):
                 signum: The signal number.
                 frame: the current stack frame (None or a frame object).
             """
-            ftl_navigation_node.get_logger().info("Signal Handler initiated")
+#            ftl_navigation_node.get_logger().info("Signal Handler initiated")
             ftl_navigation_node.thread_shutdown()
             ftl_navigation_node.wait_for_thread()
 
@@ -479,7 +504,7 @@ def main(args=None):
         signal.signal(signal.SIGINT, signal_handler)
         rclpy.spin(ftl_navigation_node, executor)
     except Exception as ex:
-        ftl_navigation_node.get_logger().error(f"Exception in FTLNavigationNode: {ex}")
+#        ftl_navigation_node.get_logger().error(f"Exception in FTLNavigationNode: {ex}")
         ftl_navigation_node.destroy_node()
         rclpy.shutdown()
 
