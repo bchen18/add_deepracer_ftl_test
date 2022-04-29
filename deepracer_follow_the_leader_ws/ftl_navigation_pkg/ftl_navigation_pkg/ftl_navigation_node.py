@@ -175,24 +175,12 @@ class FTLNavigationNode(Node):
     # Estimates the distance to the front car
     # Use of simple optic geometry
     def get_front_distance(self, delta):
-        delta_x, delta_y, _, _ = delta[0], delta[1]
+        delta_x, delta_y  = delta[0], delta[1]
         tilt = 20 *np.pi/180 # evaluation of camera tilt, need to do proper measurement
         f = 0.045333 # lens focal [meters]
         car_height = 0.135 # measurement in meters
-        return np.cos(tilt)*f*(delta_x/car_height)/(delta_x/car_height-1)
-
-    # Estimates the distance to the front car
-    # Uses camera matrix
-    def get_front_distance_camera_matrix(self, delta):
-        _, _, bb_center_x, bb_center_y, target_x, target_y = delta[0], delta[1], delta[2], delta[3], delta[4], delta[5]
-        Pi = np.array([[self.f, 0, 0, 0],
-                       [0, self.f, 0, 0],
-                       [0, 0, 1, 0]])
-        pos_vector  = np.linalg.pinv(Pi)@(np.array([[bb_center_x, bb_center_y,1]]).T)
-        distance = 0
-        for i in range(3):
-            distance += pos_vector[i]**2
-        return self.lamb*distance
+        car_width = car_height*2
+        return np.cos(tilt)*f*(delta_x*delta_y)/(car_height*car_width)
 
     # Simulate "phantom" front vehicle braking for a demo. 
     # Need car_dist as a parameter since it changes each time
@@ -215,7 +203,7 @@ class FTLNavigationNode(Node):
         self.get_logger().info(f"Before MPC step:{ego_speed}")
         
         # Step MPC with current states
-        # [feas, x_opt, u_opt, J_opt] = self.MPC.MPC_step(x_t) #----------UNCOMMENT LATER ------------
+        [feas, x_opt, u_opt, J_opt] = self.MPC.MPC_step(x_t) #----------UNCOMMENT LATER ------------
         if feas != "infeasible":
             # if MPC finds a solution, use its torque output
             torque = u_opt.value[0][0]
@@ -397,7 +385,7 @@ class FTLNavigationNode(Node):
 
                 #-------------------------BEGIN ADDED CODE-------------------------
                 # Test front_distance function
-                front_dist = self.get_front_distance_camera_matrix(detection_delta.delta)
+                front_dist = self.get_front_distance(detection_delta.delta)
                 self.get_logger().info(f"Front Distance to Front Vehicle:{front_dist}")
 
                 # Use sim MPC to calculate throttle
