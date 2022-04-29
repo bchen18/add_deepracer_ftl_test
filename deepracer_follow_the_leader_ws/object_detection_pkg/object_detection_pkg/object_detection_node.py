@@ -180,7 +180,7 @@ class ObjectDetectionNode(Node):
         target_y = float(image_height)/3.0
         return target_x, target_y
 
-    def calculate_delta(self, target_x, target_y, center_x, center_y):
+    def calculate_delta(self, target_x, target_y, center_x, center_y, width, height):
         """Method that calculates the normalized error (delta) of the
            detected object from the target (reference) position
            with respect to x and y axes.
@@ -198,7 +198,7 @@ class ObjectDetectionNode(Node):
         delta_x = (center_x - target_x) / self.w
         delta_y = (center_y - target_y) / self.h
         delta = DetectionDeltaMsg()
-        delta.delta = [delta_x, delta_y,float(center_x),float(center_y)]
+        delta.delta = [delta_x, delta_y,float(center_x),float(center_y), float(width), float(height)]
         self.get_logger().debug(f"Delta from target position: {delta_x} {delta_y}")
         return delta
 
@@ -240,101 +240,15 @@ class ObjectDetectionNode(Node):
                 detected, bb_center_x, bb_center_y, width, height = self.read_barcode(frame)
 
                 if detected:
-                    delta = self.calculate_delta(self.target_x, self.target_y, bb_center_x, bb_center_y)
+                    delta = self.calculate_delta(self.target_x, self.target_y, bb_center_x, bb_center_y, width, height)
                     self.delta_publisher.publish(delta)
                 else:
-                    delta = self.calculate_delta(self.target_x, self.target_y, self.target_x, self.target_y)
+                    delta = self.calculate_delta(self.target_x, self.target_y, self.target_x, self.target_y, 0, 0)
                     self.delta_publisher.publish(delta)
                     
                 if self.publish_display_output:
                     self.show_barcodes(frame, bb_center_x, bb_center_y, width, height)
                 
-                
-                """
-                # Pre-process input.
-                input_data = {}
-                input_data[self.input_name] = self.preprocess(sensor_data)
-
-
-                # Perform Inference.
-                res = self.exec_net.infer(inputs=input_data)
-
-                # Read and postprocess output.
-                res = res[self.out_blob]
-                boxes, classes = {}, {}
-                output_data = res[0][0]
-                detected = False
-                for number, proposal in enumerate(output_data):
-                    # confidence for the predicted class.
-                    confidence = proposal[2]
-                    if (confidence > constants.CONFIDENCE_THRESHOLD and
-                            constants.COCO_LABELS[proposal[1]] == constants.DETECT_CLASS):
-                        # ID of the image in the batch.
-                        imid = np.int(proposal[0])
-                        # predicted class ID.
-                        label = np.int(proposal[1])
-                        # coordinates of the top left bounding box corner.
-                        # (coordinates are in normalized format, in range [0, 1])
-                        top_left_x = np.int(self.w * proposal[3])
-                        top_left_y = np.int(self.h * proposal[4])
-                        # coordinates of the bottom right bounding box corner.
-                        # (coordinates are in normalized format, in range [0, 1])
-                        bottom_right_x = np.int(self.w * proposal[5])
-                        bottom_right_y = np.int(self.h * proposal[6])
-                        # Calculate bounding box center
-                        bb_center_x, bb_center_y = self.calculate_bb_center(top_left_x,
-                                                                            top_left_y,
-                                                                            bottom_right_x,
-                                                                            bottom_right_y)
-                        # Calculate detection delta.
-                        detection_delta = self.calculate_delta(self.target_x,
-                                                               self.target_y,
-                                                               bb_center_x,
-                                                               bb_center_y)
-                        # Publish to object_detection_delta topic.
-                        self.delta_publisher.publish(detection_delta)
-                        # Set the flag that there is a detected object.
-                        detected = True
-
-                        if imid not in boxes.keys():
-                            boxes[imid] = []
-                        boxes[imid].append([top_left_x, top_left_y, bottom_right_x, bottom_right_y])
-                        if imid not in classes.keys():
-                            classes[imid] = []
-                        classes[imid].append(label)
-                        # Break as soon as specified class is detected.
-                        self.get_logger().info(f"Box size in pixels\tw:{top_left_x-bottom_right_x}\th:{top_left_y-bottom_right_y}")
-                        break
-
-                if not detected:
-                    # Assume being at target position.
-                    detection_delta = self.calculate_delta(self.target_x,
-                                                           self.target_y,
-                                                           self.target_x,
-                                                           self.target_y)
-                    self.delta_publisher.publish(detection_delta)
-                if self.publish_display_output:
-                    # Change data layout from CHW to HWC.
-                    display_image = input_data[self.input_name].transpose((1, 2, 0))
-                    for imid in classes:
-                        for box in boxes[imid]:
-                            # Drawing bounding boxes on the image.
-                            cv2.rectangle(display_image,
-                                          (box[0], box[1]),
-                                          (box[2], box[3]),
-                                          (232, 35, 244),
-                                          2)
-                    # Printing target center on the image.
-                    cv2.circle(display_image,
-                               (int(self.target_x),
-                                int(self.target_y)),
-                               5,
-                               (0, 255, 0),
-                               -1)
-                    # Publish to display topic (Can be viewed on localhost:8080).
-                    display_image = self.bridge.cv2_to_imgmsg(np.array(display_image), "bgr8")
-                    self.display_image_publisher.publish(display_image)
-                """
                 self.get_logger().info(f"Total execution time = {time.time() - start_time}")
         except Exception as ex:
             self.get_logger().error(f"Failed inference step: {ex}")
