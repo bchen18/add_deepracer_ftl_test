@@ -48,8 +48,8 @@ from ftl_navigation_pkg import (constants,
                                 utils, bmi160, deepracer_MPC)
 import numpy as np
 
-KNOWN_HEIGHT = 0.1
-FOCAL_LENGTH = 351.6633333
+KNOWN_HEIGHT = 0.155
+FOCAL_LENGTH = 237.9355
 
 class FTLNavigationNode(Node):
     """Node responsible for deciding the action messages (servo control messages specifically angle
@@ -108,6 +108,7 @@ class FTLNavigationNode(Node):
         #self.f = 0.045333
         self.lamb = 1
         self.prev_car_dist = 0
+        self.prev_z = 0
         #-------------------------END ADDED CODE-------------------------
 
 
@@ -214,6 +215,9 @@ class FTLNavigationNode(Node):
         ego_speed = self.prev_ego_speed + accel_data[1]*0.1
         if abs(accel_data[1]) < 0.10: 
             ego_speed = 0
+        #if (accel_data[2] - self.prev_z) > 1.0: 
+        #    imu_dev.calibration_process()
+        #    self.prev_z = accel_data[2]
         self.MPC.v_f = (car_dist - self.prev_car_dist)/0.1 + self.prev_ego_speed
         self.prev_ego_speed = ego_speed
 
@@ -229,15 +233,15 @@ class FTLNavigationNode(Node):
             # if MPC finds a solution, use its torque output
             torque = u_opt.value[0][0]
         else:
-            # if MPC can't find solution, use reduced previous torque
+           # if MPC can't find solution, use reduced previous torque
             torque = self.prev_torque*0.9
         
-        if (car_dist == 0) and (count % 4 == 0):  
-            torque = 0
+        #if (car_dist == 0) and (count % 4 == 0):  
+        #    torque = 0
             #imu_dev.calibration_process()
             
             
-        torque = torque/1.905
+        torque = torque/1.915
         self.prev_torque = torque
 #        self.get_logger().info(f"After MPC step:{ego_speed}")
 
@@ -437,7 +441,7 @@ class FTLNavigationNode(Node):
                     front_dist = 0
                     count += 1
 
-#                self.get_logger().info(f"Front Distance to Front Vehicle:{front_dist}")
+                self.get_logger().info(f"Front Distance to Front Vehicle:{front_dist}")
 
                 # Use sim MPC to calculate throttle
                 msg.throttle, front_dist = self.get_sim_MPC_action(front_dist, imu_dev, count)
